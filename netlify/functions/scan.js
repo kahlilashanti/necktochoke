@@ -397,8 +397,11 @@ async function scanUrl(url) {
  * Netlify Function Handler
  */
 exports.handler = async (event, context) => {
+  const startTime = Date.now();
+
   // Only allow POST requests
   if (event.httpMethod !== 'POST') {
+    console.log('[ANALYTICS] Method not allowed:', event.httpMethod);
     return {
       statusCode: 405,
       headers: SECURITY_HEADERS,
@@ -416,6 +419,10 @@ exports.handler = async (event, context) => {
     const { limited, retryAfter } = checkRateLimit(clientIP);
     if (limited) {
       const minutes = Math.ceil(retryAfter / 60);
+      console.log('[ANALYTICS] Rate limit hit:', {
+        ip: clientIP,
+        retryAfter: minutes + ' minutes'
+      });
       return {
         statusCode: 429,
         headers: {
@@ -434,6 +441,7 @@ exports.handler = async (event, context) => {
     const { url, type } = body;
 
     if (!url) {
+      console.log('[ANALYTICS] Missing URL in request');
       return {
         statusCode: 400,
         headers: SECURITY_HEADERS,
@@ -446,6 +454,10 @@ exports.handler = async (event, context) => {
     try {
       validatedUrl = await validateUrl(url);
     } catch (error) {
+      console.log('[ANALYTICS] Invalid URL:', {
+        url: url,
+        error: error.message
+      });
       return {
         statusCode: 400,
         headers: SECURITY_HEADERS,
@@ -453,8 +465,27 @@ exports.handler = async (event, context) => {
       };
     }
 
+    console.log('[ANALYTICS] Scan started:', {
+      url: validatedUrl,
+      type: type,
+      ip: clientIP
+    });
+
     // Run the scan
     const results = await scanUrl(validatedUrl);
+
+    const duration = Date.now() - startTime;
+    console.log('[ANALYTICS] Scan completed:', {
+      url: validatedUrl,
+      duration: duration + 'ms',
+      vulnerabilities: {
+        total: results.summary.total,
+        critical: results.summary.critical,
+        high: results.summary.high,
+        medium: results.summary.medium,
+        low: results.summary.low
+      }
+    });
 
     return {
       statusCode: 200,
@@ -463,7 +494,10 @@ exports.handler = async (event, context) => {
     };
 
   } catch (error) {
-    console.error('Scan error:', error);
+    console.error('[ANALYTICS] Scan error:', {
+      error: error.message,
+      stack: error.stack
+    });
     return {
       statusCode: 500,
       headers: SECURITY_HEADERS,

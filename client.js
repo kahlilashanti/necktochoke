@@ -17,21 +17,18 @@ document.addEventListener('DOMContentLoaded', () => {
      DOM Elements
      =================================== */
 
+  const optionCards = document.querySelectorAll('.option-card');
   const optionButtons = document.querySelectorAll('.option-button');
-  const inputSection = document.getElementById('inputSection');
-  const inputPrompt = document.getElementById('inputPrompt');
-  const userInput = document.getElementById('userInput');
-  const scanButton = document.getElementById('scanButton');
   const loadingMessage = document.getElementById('loadingMessage');
+  const loadingText = document.getElementById('loadingText');
+  const loadingSubtext = document.getElementById('loadingSubtext');
+  const progressBar = document.getElementById('progressBar');
   const resultsSection = document.getElementById('resultsSection');
   const resultsContent = document.getElementById('resultsContent');
-  const urlError = document.getElementById('urlError');
   const scrollIndicator = document.querySelector('.scroll-indicator');
-
-  let selectedType = 'url'; // Track which option was selected
-
-  // Scan button starts disabled
-  scanButton.disabled = true;
+  const safetyButton = document.getElementById('safetyButton');
+  const safetyNotice = document.getElementById('safetyNotice');
+  const closeNotice = document.getElementById('closeNotice');
 
   /* ===================================
      Hide Scroll Indicator on Interaction
@@ -50,6 +47,61 @@ document.addEventListener('DOMContentLoaded', () => {
   optionButtons.forEach(button => {
     button.addEventListener('click', hideScrollIndicator, { once: true });
   });
+
+  /* ===================================
+     Progress Bar Animation
+     =================================== */
+
+  const progressMessages = [
+    { progress: 0, text: "Checking if you left the door unlocked..." },
+    { progress: 20, text: "Looking for exposed passwords and secrets..." },
+    { progress: 40, text: "Testing your security headers..." },
+    { progress: 60, text: "Checking if hackers can read your data..." },
+    { progress: 80, text: "Almost done. Tallying up the damage..." },
+    { progress: 95, text: "Preparing your results..." }
+  ];
+
+  function startProgressBar() {
+    if (!progressBar) return;
+
+    let currentIndex = 0;
+    progressBar.style.width = '0%';
+
+    const interval = setInterval(() => {
+      if (currentIndex < progressMessages.length) {
+        const msg = progressMessages[currentIndex];
+        progressBar.style.width = msg.progress + '%';
+        if (loadingSubtext) {
+          loadingSubtext.textContent = msg.text;
+        }
+        currentIndex++;
+      } else {
+        clearInterval(interval);
+      }
+    }, 1000); // Change message every second
+
+    return interval;
+  }
+
+  function stopProgressBar(interval) {
+    if (interval) clearInterval(interval);
+    if (progressBar) progressBar.style.width = '100%';
+  }
+
+  /* ===================================
+     Safety Notice Toggle
+     =================================== */
+
+  if (safetyButton && safetyNotice && closeNotice) {
+    safetyButton.addEventListener('click', () => {
+      safetyNotice.classList.add('active');
+      safetyNotice.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+
+    closeNotice.addEventListener('click', () => {
+      safetyNotice.classList.remove('active');
+    });
+  }
 
   /* ===================================
      Porn Keywords Detection
@@ -106,142 +158,130 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ===================================
-     Input Change Handler - Enable/Disable Button
-     =================================== */
-
-  userInput.addEventListener('input', () => {
-    const result = validateAndFixUrl(userInput.value);
-
-    if (result.valid) {
-      // Valid URL - enable button, clear error
-      scanButton.disabled = false;
-      urlError.textContent = '';
-      urlError.classList.remove('active');
-      // Auto-update the input with https:// if we added it
-      if (result.url !== userInput.value.trim()) {
-        userInput.value = result.url;
-      }
-    } else {
-      // Invalid URL - disable button, show error
-      scanButton.disabled = true;
-      if (result.error) {
-        urlError.textContent = result.error;
-        urlError.classList.add('active');
-      } else {
-        urlError.classList.remove('active');
-      }
-    }
-  });
-
-  /* ===================================
      Option Selection Handler
      =================================== */
 
   optionButtons.forEach(button => {
     button.addEventListener('click', () => {
-      // Get the selected option type from parent card
-      const optionType = button.parentElement.dataset.option;
-      selectedType = optionType;
+      const card = button.parentElement;
+      const optionType = card.dataset.option;
 
-      // Show input section
-      inputSection.classList.add('active');
+      // Hide all other cards
+      optionCards.forEach(c => {
+        if (c !== card) {
+          c.style.display = 'none';
+        }
+      });
+
+      // Activate this card
+      card.classList.add('active');
 
       // Hide previous results if any
       loadingMessage.classList.remove('active');
       resultsSection.classList.remove('active');
-      urlError.classList.remove('active');
 
-      // Clear input field and disable button
-      userInput.value = '';
-      scanButton.disabled = true;
+      // Get input and button for this specific card
+      const input = card.querySelector('.option-input');
+      const scanButton = card.querySelector('.scan-button');
+      const urlError = card.querySelector('.url-error');
 
-      // Set appropriate prompt based on option selected
-      switch (optionType) {
-        case 'url':
-          inputPrompt.textContent = 'Paste your website link below:';
-          userInput.placeholder = 'yourapp.com or mysite.lovable.app';
-          break;
+      // Focus on input field
+      setTimeout(() => input.focus(), 100);
 
-        case 'github':
-          inputPrompt.textContent = 'Paste your GitHub link:';
-          userInput.placeholder = 'github.com/username/repo';
-          break;
+      // Input validation for this card
+      input.addEventListener('input', () => {
+        const result = validateAndFixUrl(input.value);
 
-        case 'noIdea':
-          // Option 3 routes to same flow as option 1 with friendlier copy
-          inputPrompt.textContent = "No worries! Just paste the link to what you built:";
-          userInput.placeholder = 'yourapp.com';
-          break;
-
-        default:
-          inputPrompt.textContent = 'Paste your link here:';
-          userInput.placeholder = 'yourapp.com';
-      }
-
-      // Focus on input field for better UX
-      userInput.focus();
-
-      // Smooth scroll to input section
-      inputSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    });
-  });
-
-  /* ===================================
-     Scan Button Handler
-     =================================== */
-
-  scanButton.addEventListener('click', async () => {
-    const result = validateAndFixUrl(userInput.value);
-
-    if (!result.valid) {
-      alert(result.error || 'Please enter a valid URL');
-      return;
-    }
-
-    const url = result.url;
-
-    // Show loading message
-    loadingMessage.classList.add('active');
-    resultsSection.classList.remove('active');
-    scanButton.disabled = true;
-    userInput.disabled = true;
-
-    // Scroll to loading message
-    setTimeout(() => {
-      loadingMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 100);
-
-    try {
-      // Make API call to scan endpoint
-      const response = await fetch('/scan', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          url: url,
-          type: selectedType
-        })
+        if (result.valid) {
+          // Valid URL - enable button, clear error
+          scanButton.disabled = false;
+          urlError.textContent = '';
+          urlError.classList.remove('active');
+          // Auto-update the input with https:// if we added it
+          if (result.url !== input.value.trim()) {
+            input.value = result.url;
+          }
+        } else {
+          // Invalid URL - disable button, show error
+          scanButton.disabled = true;
+          if (result.error) {
+            urlError.textContent = result.error;
+            urlError.classList.add('active');
+          } else {
+            urlError.classList.remove('active');
+          }
+        }
       });
 
-      const data = await response.json();
+      // Enter key support
+      input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter' && !scanButton.disabled) {
+          scanButton.click();
+        }
+      });
 
-      if (!response.ok) {
-        throw new Error(data.error || 'Scan failed');
-      }
+      // Scan button handler for this card
+      scanButton.addEventListener('click', async () => {
+        const result = validateAndFixUrl(input.value);
 
-      // Hide loading, show results
-      loadingMessage.classList.remove('active');
-      displayResults(data);
+        if (!result.valid) {
+          alert(result.error || 'Please enter a valid URL');
+          return;
+        }
 
-    } catch (error) {
-      console.error('Scan error:', error);
-      loadingMessage.classList.remove('active');
-      alert(`Scan failed: ${error.message}`);
-    } finally {
-      userInput.disabled = false;
-      // Keep button disabled until they change the input
-    }
+        const url = result.url;
+
+        // Show loading message
+        loadingMessage.classList.add('active');
+        resultsSection.classList.remove('active');
+        scanButton.disabled = true;
+        input.disabled = true;
+
+        // Start progress bar animation
+        const progressInterval = startProgressBar();
+
+        // Scroll to loading message
+        setTimeout(() => {
+          loadingMessage.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 100);
+
+        try {
+          // Make API call to scan endpoint
+          const response = await fetch('/scan', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              url: url,
+              type: optionType
+            })
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            throw new Error(data.error || 'Scan failed');
+          }
+
+          // Stop progress bar and hide loading
+          stopProgressBar(progressInterval);
+          setTimeout(() => {
+            loadingMessage.classList.remove('active');
+            displayResults(data);
+          }, 500); // Brief pause to show 100% complete
+
+        } catch (error) {
+          console.error('Scan error:', error);
+          stopProgressBar(progressInterval);
+          loadingMessage.classList.remove('active');
+          alert(`Scan failed: ${error.message}`);
+        } finally {
+          input.disabled = false;
+          // Keep button disabled until they change the input
+        }
+      });
+    }, { once: true }); // Only attach option button handler once per button
   });
 
   /* ===================================
@@ -251,6 +291,10 @@ document.addEventListener('DOMContentLoaded', () => {
   function displayResults(data) {
     // Clear previous results
     resultsContent.innerHTML = '';
+
+    // Create "Why should I care?" section
+    const whyShouldICare = createWhyShouldICare(data);
+    resultsContent.appendChild(whyShouldICare);
 
     // Create summary section
     const summary = createSummary(data.summary);
@@ -288,6 +332,10 @@ document.addEventListener('DOMContentLoaded', () => {
       resultsContent.appendChild(actionsDiv);
     }
 
+    // Add "Scan Another Site" button
+    const resetButton = createResetButton();
+    resultsContent.appendChild(resetButton);
+
     // Show results section
     resultsSection.classList.add('active');
 
@@ -295,6 +343,44 @@ document.addEventListener('DOMContentLoaded', () => {
     setTimeout(() => {
       resultsSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }, 100);
+  }
+
+  /* ===================================
+     Create "Why Should I Care?" Section
+     =================================== */
+
+  function createWhyShouldICare(data) {
+    const whyDiv = document.createElement('div');
+    whyDiv.className = 'why-care-section';
+
+    let message = '';
+    const hasExposedFiles = data.vulnerabilities.some(v => v.title.includes('Exposed Sensitive Files'));
+    const hasNoHttps = data.vulnerabilities.some(v => v.title.includes('No HTTPS'));
+    const hasCritical = data.summary.critical > 0;
+    const hasHigh = data.summary.high > 0;
+
+    if (hasExposedFiles) {
+      message = "🚨 Based on what we found, <strong>your passwords and secrets are public.</strong> Right now, anyone can download your .env file, API keys, or database credentials. This is like leaving your wallet on the sidewalk with a sign that says 'free money.'";
+    } else if (hasNoHttps) {
+      message = "⚠️ Based on what we found, <strong>everything your users type is visible.</strong> Passwords, credit cards, messages - it's all being sent in plain text. Anyone on the same WiFi can read it. This is illegal in many places and will get you sued.";
+    } else if (hasCritical) {
+      message = "🔥 Based on what we found, <strong>you have critical security holes.</strong> The kind that get you hacked, not 'maybe someday' but 'probably already happened.' Fix these immediately or take your site down.";
+    } else if (hasHigh) {
+      message = "⚠️ Based on what we found, <strong>your site is an easy target.</strong> You're missing basic protections that keep the script kiddies out. It's like leaving your front door unlocked in a bad neighborhood.";
+    } else if (data.summary.medium > 0) {
+      message = "⚡ Based on what we found, <strong>you're vulnerable to common attacks.</strong> Hackers could hijack your site, inject malicious code, or trick your users. Not good, but fixable.";
+    } else if (data.summary.low > 0) {
+      message = "✅ Based on what we found, <strong>you're mostly good!</strong> A few minor things to tighten up, but nothing urgent. You're better off than 90% of AI-built sites.";
+    } else {
+      message = "🎉 Based on what we found, <strong>nice work!</strong> We didn't find any obvious security issues. You're in good shape. (But this isn't a guarantee - consider a professional audit for anything important.)";
+    }
+
+    whyDiv.innerHTML = `
+      <h3>Why should I care?</h3>
+      <p>${message}</p>
+    `;
+
+    return whyDiv;
   }
 
   /* ===================================
@@ -436,6 +522,58 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ===================================
+     Create Reset Button
+     =================================== */
+
+  function createResetButton() {
+    const resetDiv = document.createElement('div');
+    resetDiv.className = 'reset-section';
+
+    resetDiv.innerHTML = `
+      <button class="reset-button" id="resetButton">
+        Scan Another Site
+      </button>
+    `;
+
+    // Add click handler after inserting into DOM
+    setTimeout(() => {
+      const resetBtn = document.getElementById('resetButton');
+      if (resetBtn) {
+        resetBtn.addEventListener('click', () => {
+          // Hide results and loading
+          resultsSection.classList.remove('active');
+          loadingMessage.classList.remove('active');
+
+          // Show all option cards again
+          optionCards.forEach(card => {
+            card.style.display = 'block';
+            card.classList.remove('active');
+          });
+
+          // Reset all inputs and buttons in cards
+          optionCards.forEach(card => {
+            const input = card.querySelector('.option-input');
+            const scanButton = card.querySelector('.scan-button');
+            const urlError = card.querySelector('.url-error');
+
+            if (input) input.value = '';
+            if (scanButton) scanButton.disabled = true;
+            if (urlError) {
+              urlError.textContent = '';
+              urlError.classList.remove('active');
+            }
+          });
+
+          // Scroll back to top
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+    }, 100);
+
+    return resetDiv;
+  }
+
+  /* ===================================
      Utility Functions
      =================================== */
 
@@ -455,15 +593,5 @@ document.addEventListener('DOMContentLoaded', () => {
     div.textContent = text;
     return div.innerHTML;
   }
-
-  /* ===================================
-     Enter Key Support for Input Field
-     =================================== */
-
-  userInput.addEventListener('keypress', (e) => {
-    if (e.key === 'Enter' && !scanButton.disabled) {
-      scanButton.click();
-    }
-  });
 
 });

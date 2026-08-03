@@ -59,10 +59,14 @@
   <div class="container">
 
     <!-- Header: Brand and Tagline -->
+    <!-- Safety Button (top right) -->
+    <button class="safety-button" id="safetyButton">Is this safe?</button>
+
     <header class="header">
       <h1 class="brand">Neck To Choke</h1>
       <p class="tagline">You shipped AI code. Is it secure? Probably not.</p>
       <p class="tagline">Don't let it be your neck on the line.</p>
+      <p class="description">Share your link and we'll tell you what security issues to fix. Get plain-English explanations you can paste right into your AI to make it secure.</p>
 
       <!-- Scroll Indicator -->
       <div class="scroll-indicator">
@@ -70,11 +74,12 @@
       </div>
     </header>
 
-    <!-- Safety Notice -->
-    <div class="safety-notice">
-      <h3>Is this safe?</h3>
-      <p><strong>Yes.</strong> This scanner only reads publicly available information from your site. We don't store your data, we don't modify anything, and we don't hack. Think of it like a security-conscious friend checking if you left your front door unlocked.</p>
+    <!-- Safety Notice (Hidden by default) -->
+    <div class="safety-notice" id="safetyNotice">
+      <h3>Yes, it's safe.</h3>
+      <p><strong>This scanner only reads publicly available information from your site.</strong> We don't store your data, we don't modify anything, and we don't hack. Think of it like a security-conscious friend checking if you left your front door unlocked.</p>
       <p>Your link is safe to share here. We're developers who've seen AI mislead good people, and we're here to help.</p>
+      <button class="close-notice" id="closeNotice">Got it</button>
     </div>
 
     <!-- Main Content: Option Selection -->
@@ -88,65 +93,57 @@
       <!-- Option Cards -->
       <div class="options">
 
-        <!-- Option 1: I built a website or app -->
+        <!-- Option 1: I have a link -->
         <div class="option-card" data-option="url">
           <button class="option-button">
-            I built a website or app and I have a link to share
+            I have a link to my site
           </button>
+          <!-- Hidden input that appears when clicked -->
+          <div class="option-input-wrapper">
+            <input
+              type="text"
+              class="option-input"
+              placeholder="yourapp.com or mysite.lovable.app"
+              autocomplete="off"
+            >
+            <div class="url-error"></div>
+            <button class="scan-button" disabled>Scan It</button>
+          </div>
         </div>
 
-        <!-- Option 2: I have a GitHub repo URL -->
-        <div class="option-card" data-option="github">
+        <!-- Option 2: Confused/need help -->
+        <div class="option-card" data-option="confused">
           <button class="option-button">
-            I have a GitHub repo
+            I built something with AI but I'm not sure what I have
           </button>
-        </div>
-
-        <!-- Option 3: No idea but I built something with AI -->
-        <div class="option-card" data-option="noIdea">
-          <button class="option-button">
-            I'm not sure what I have, but I built something with AI and I don't want to go to jail
-          </button>
+          <!-- Hidden input that appears when clicked -->
+          <div class="option-input-wrapper">
+            <input
+              type="text"
+              class="option-input"
+              placeholder="yourapp.com"
+              autocomplete="off"
+            >
+            <div class="url-error"></div>
+            <button class="scan-button" disabled>Scan It</button>
+          </div>
         </div>
 
       </div>
 
-      <!-- Input Section (Hidden by default, revealed on option selection) -->
-      <div class="input-section" id="inputSection">
-
-        <!-- Dynamic prompt text -->
-        <p class="input-prompt" id="inputPrompt"></p>
-
-        <!-- Input field -->
-        <div class="input-group-wrapper">
-          <input
-            type="text"
-            class="form-control input-field"
-            id="userInput"
-            placeholder="Paste it here..."
-            autocomplete="off"
-          >
+      <!-- Loading state -->
+      <div class="loading-message" id="loadingMessage">
+        <p id="loadingText">Hang tight. We're poking around.</p>
+        <div class="progress-bar-container">
+          <div class="progress-bar" id="progressBar"></div>
         </div>
+        <p class="loading-subtext" id="loadingSubtext">Checking if you left the door unlocked...</p>
+      </div>
 
-        <!-- URL Error Message -->
-        <div class="url-error" id="urlError"></div>
-
-        <!-- Scan button (disabled by default) -->
-        <button class="scan-button" id="scanButton" disabled>
-          Scan It
-        </button>
-
-        <!-- Loading state -->
-        <div class="loading-message" id="loadingMessage">
-          <p>Hang tight. We're poking around.</p>
-        </div>
-
-        <!-- Results (shown after scan completes) -->
-        <div class="results-section" id="resultsSection">
-          <h3 class="results-title">Here's what we found:</h3>
-          <div id="resultsContent"></div>
-        </div>
-
+      <!-- Results (shown after scan completes) -->
+      <div class="results-section" id="resultsSection">
+        <h3 class="results-title">Here's what we found:</h3>
+        <div id="resultsContent"></div>
       </div>
 
     </main>

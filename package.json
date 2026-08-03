@@ -1,0 +1,12 @@
+{
+  "name": "necktochoke",
+  "version": "1.0.0",
+  "description": "Security scanner for non-technical founders",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["security", "scanner"],
+  "author": "",
+  "license": "MIT"
+}

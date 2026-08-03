@@ -1,0 +1,15 @@
+.env
+painpoints_*.md
+node_modules/
+.DS_Store
+.netlify/
+*.log
+.cache
+
+# Internal docs (keep private)
+DISTRIBUTION.md
+SOCIAL_COPY.md
+CHANGELOG.md
+CONTEXT.md
+DEPLOY.md
+README.md

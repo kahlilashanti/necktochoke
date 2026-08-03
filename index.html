@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Primary Meta Tags -->
+  <title>Neck To Choke - Free Security Scanner for AI-Generated Code</title>
+  <meta name="title" content="Neck To Choke - Free Security Scanner for AI-Generated Code">
+  <meta name="description" content="You shipped AI code. Is it secure? Probably not. Free security scanner checks your AI-built apps for vulnerabilities in seconds. No signup required.">
+  <meta name="keywords" content="AI code security, ChatGPT security, Claude security, AI security scanner, web security checker, HTTPS checker, security headers, AI-generated code, Cursor security, v0 security, free security audit">
+  <meta name="author" content="Neck To Choke">
+
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://necktochoke.com/">
+  <meta property="og:title" content="Neck To Choke - Free Security Scanner for AI-Generated Code">
+  <meta property="og:description" content="You shipped AI code. Is it secure? Probably not. Free security scanner checks your AI-built apps for vulnerabilities in seconds.">
+  <meta property="og:image" content="https://necktochoke.com/og-image.png">
+
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://necktochoke.com/">
+  <meta property="twitter:title" content="Neck To Choke - Free Security Scanner for AI-Generated Code">
+  <meta property="twitter:description" content="You shipped AI code. Is it secure? Probably not. Free security scanner checks your AI-built apps for vulnerabilities in seconds.">
+  <meta property="twitter:image" content="https://necktochoke.com/og-image.png">
+
+  <!-- Canonical URL -->
+  <link rel="canonical" href="https://necktochoke.com/">
+
+  <!-- Schema.org markup for Google -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "Neck To Choke",
+    "description": "Free security scanner for AI-generated code and websites",
+    "applicationCategory": "SecurityApplication",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "featureList": "Security headers check, HTTPS detection, exposed files scanner, vulnerability detection",
+    "operatingSystem": "Any",
+    "browserRequirements": "Requires JavaScript"
+  }
+  </script>
+
+  <!-- Bootstrap 5 CDN -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Main Container -->
+  <div class="container">
+
+    <!-- Header: Brand and Tagline -->
+    <header class="header">
+      <h1 class="brand">Neck To Choke</h1>
+      <p class="tagline">You shipped AI code. Is it secure? Probably not.</p>
+      <p class="tagline">Don't let it be your neck on the line.</p>
+
+      <!-- Scroll Indicator -->
+      <div class="scroll-indicator">
+        <span>↓</span>
+      </div>
+    </header>
+
+    <!-- Main Content: Option Selection -->
+    <main class="main-content">
+
+      <!-- Instructions -->
+      <div class="instructions">
+        <h2 class="question">What do you have?</h2>
+      </div>
+
+      <!-- Option Cards -->
+      <div class="options">
+
+        <!-- Option 1: I have a URL -->
+        <div class="option-card" data-option="url">
+          <button class="option-button">
+            I have a URL
+          </button>
+        </div>
+
+        <!-- Option 2: I have a GitHub repo URL -->
+        <div class="option-card" data-option="github">
+          <button class="option-button">
+            I have a GitHub repo URL
+          </button>
+        </div>
+
+        <!-- Option 3: No idea but I built something with AI -->
+        <div class="option-card" data-option="noIdea">
+          <button class="option-button">
+            No idea but I built something with AI and I don't want to go to jail
+          </button>
+        </div>
+
+      </div>
+
+      <!-- Input Section (Hidden by default, revealed on option selection) -->
+      <div class="input-section" id="inputSection">
+
+        <!-- Dynamic prompt text -->
+        <p class="input-prompt" id="inputPrompt"></p>
+
+        <!-- Input field -->
+        <div class="input-group-wrapper">
+          <input
+            type="text"
+            class="form-control input-field"
+            id="userInput"
+            placeholder="Paste it here..."
+            autocomplete="off"
+          >
+        </div>
+
+        <!-- URL Error Message -->
+        <div class="url-error" id="urlError"></div>
+
+        <!-- Scan button (disabled by default) -->
+        <button class="scan-button" id="scanButton" disabled>
+          Scan It
+        </button>
+
+        <!-- Loading state -->
+        <div class="loading-message" id="loadingMessage">
+          <p>Hang tight. We're poking around.</p>
+        </div>
+
+        <!-- Results (shown after scan completes) -->
+        <div class="results-section" id="resultsSection">
+          <h3 class="results-title">Here's what we found:</h3>
+          <div id="resultsContent"></div>
+        </div>
+
+      </div>
+
+    </main>
+
+    <!-- Footer: Minimal, optional -->
+    <footer class="footer">
+      <p>Built by people who probably shouldn't build security tools.</p>
+    </footer>
+
+  </div>
+
+  <!-- Client-side JavaScript -->
+  <script src="client.js"></script>
+
+</body>
+</html>

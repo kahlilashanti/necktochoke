@@ -1,0 +1,41 @@
+# Netlify Configuration for Neck To Choke
+
+[build]
+  # No build command needed - static site with serverless functions
+  publish = "."
+  functions = "netlify/functions"
+
+# Redirect /scan API calls to the serverless function
+[[redirects]]
+  from = "/scan"
+  to = "/.netlify/functions/scan"
+  status = 200
+
+# Custom headers for security (practice what we preach!)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+# Force HTTPS
+[[redirects]]
+  from = "http://necktochoke.com/*"
+  to = "https://necktochoke.com/:splat"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "http://www.necktochoke.com/*"
+  to = "https://necktochoke.com/:splat"
+  status = 301
+  force = true
+
+# Add CSP header (Content Security Policy)
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; img-src 'self' data: https:; font-src 'self' data: https://cdn.jsdelivr.net; connect-src 'self' https://necktochoke.com"

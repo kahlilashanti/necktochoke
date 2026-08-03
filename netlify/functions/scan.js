@@ -7,6 +7,96 @@
 const http = require('http');
 const https = require('https');
 const { URL } = require('url');
+const dns = require('dns').promises;
+
+// Security headers for all responses
+const SECURITY_HEADERS = {
+  'Content-Type': 'application/json',
+  'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'X-XSS-Protection': '1; mode=block',
+  'Referrer-Policy': 'strict-origin-when-cross-origin'
+};
+
+/**
+ * SSRF Protection - Block requests to internal/private IP ranges
+ */
+function isPrivateIP(ip) {
+  // IPv4 private ranges
+  const ipv4Parts = ip.split('.').map(Number);
+
+  if (ipv4Parts.length === 4 && ipv4Parts.every(n => n >= 0 && n <= 255)) {
+    // 127.0.0.0/8 - Loopback
+    if (ipv4Parts[0] === 127) return true;
+
+    // 10.0.0.0/8 - Private
+    if (ipv4Parts[0] === 10) return true;
+
+    // 172.16.0.0/12 - Private
+    if (ipv4Parts[0] === 172 && ipv4Parts[1] >= 16 && ipv4Parts[1] <= 31) return true;
+
+    // 192.168.0.0/16 - Private
+    if (ipv4Parts[0] === 192 && ipv4Parts[1] === 168) return true;
+
+    // 169.254.0.0/16 - Link-local
+    if (ipv4Parts[0] === 169 && ipv4Parts[1] === 254) return true;
+
+    // 0.0.0.0/8 - Current network
+    if (ipv4Parts[0] === 0) return true;
+  }
+
+  // IPv6 loopback and private
+  if (ip === '::1' || ip === '::' || ip.startsWith('fe80:') || ip.startsWith('fc00:') || ip.startsWith('fd00:')) {
+    return true;
+  }
+
+  return false;
+}
+
+async function validateUrl(urlString) {
+  let parsedUrl;
+
+  try {
+    parsedUrl = new URL(urlString);
+  } catch (error) {
+    throw new Error('Invalid URL format');
+  }
+
+  // Only allow https
+  if (parsedUrl.protocol !== 'https:') {
+    throw new Error('Only HTTPS URLs are allowed');
+  }
+
+  const hostname = parsedUrl.hostname.toLowerCase();
+
+  // Block localhost variations
+  if (hostname === 'localhost' || hostname === '0.0.0.0' || hostname.endsWith('.local')) {
+    throw new Error('Cannot scan localhost or internal hostnames');
+  }
+
+  // If it's an IP address, check if it's private
+  if (isPrivateIP(hostname)) {
+    throw new Error('Cannot scan private IP addresses');
+  }
+
+  // Resolve hostname to IP and check if it resolves to private IP
+  try {
+    const addresses = await dns.resolve4(hostname).catch(() => []);
+    const addresses6 = await dns.resolve6(hostname).catch(() => []);
+
+    for (const ip of [...addresses, ...addresses6]) {
+      if (isPrivateIP(ip)) {
+        throw new Error('Cannot scan domains that resolve to private IP addresses');
+      }
+    }
+  } catch (error) {
+    // If DNS resolution fails, let the scan attempt continue
+    // (it will fail naturally when trying to connect)
+  }
+
+  return parsedUrl.toString();
+}
 
 // Common exposed files that should never be publicly accessible
 const EXPOSED_FILES = [
@@ -243,6 +333,7 @@ exports.handler = async (event, context) => {
   if (event.httpMethod !== 'POST') {
     return {
       statusCode: 405,
+      headers: SECURITY_HEADERS,
       body: JSON.stringify({ error: 'Method not allowed' })
     };
   }
@@ -255,35 +346,29 @@ exports.handler = async (event, context) => {
     if (!url) {
       return {
         statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: SECURITY_HEADERS,
         body: JSON.stringify({ error: 'URL is required' })
       };
     }
 
-    // Validate URL format
+    // Validate URL format and check for SSRF
+    let validatedUrl;
     try {
-      new URL(url);
+      validatedUrl = await validateUrl(url);
     } catch (error) {
       return {
         statusCode: 400,
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({ error: 'Invalid URL format' })
+        headers: SECURITY_HEADERS,
+        body: JSON.stringify({ error: error.message })
       };
     }
 
     // Run the scan
-    const results = await scanUrl(url);
+    const results = await scanUrl(validatedUrl);
 
     return {
       statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
+      headers: SECURITY_HEADERS,
       body: JSON.stringify(results)
     };
 
@@ -291,9 +376,7 @@ exports.handler = async (event, context) => {
     console.error('Scan error:', error);
     return {
       statusCode: 500,
-      headers: {
-        'Content-Type': 'application/json'
-      },
+      headers: SECURITY_HEADERS,
       body: JSON.stringify({ error: 'Scan failed: ' + error.message })
     };
   }

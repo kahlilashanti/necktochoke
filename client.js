@@ -158,23 +158,23 @@ document.addEventListener('DOMContentLoaded', () => {
       // Set appropriate prompt based on option selected
       switch (optionType) {
         case 'url':
-          inputPrompt.textContent = 'Paste your URL below:';
-          userInput.placeholder = 'yourapp.com';
+          inputPrompt.textContent = 'Paste your website link below:';
+          userInput.placeholder = 'yourapp.com or mysite.lovable.app';
           break;
 
         case 'github':
-          inputPrompt.textContent = 'Paste your GitHub repo URL:';
+          inputPrompt.textContent = 'Paste your GitHub link:';
           userInput.placeholder = 'github.com/username/repo';
           break;
 
         case 'noIdea':
           // Option 3 routes to same flow as option 1 with friendlier copy
-          inputPrompt.textContent = "That's fine. Paste your URL anyway.";
+          inputPrompt.textContent = "No worries! Just paste the link to what you built:";
           userInput.placeholder = 'yourapp.com';
           break;
 
         default:
-          inputPrompt.textContent = 'Paste it here:';
+          inputPrompt.textContent = 'Paste your link here:';
           userInput.placeholder = 'yourapp.com';
       }
 

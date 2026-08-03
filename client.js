@@ -261,6 +261,20 @@ document.addEventListener('DOMContentLoaded', () => {
           const data = await response.json();
 
           if (!response.ok) {
+            // Handle rate limiting (429) specially
+            if (response.status === 429) {
+              stopProgressBar(progressInterval);
+              loadingMessage.classList.remove('active');
+
+              // Show friendly rate limit message
+              const retryMinutes = data.retryAfter ? Math.ceil(data.retryAfter / 60) : 60;
+              alert(`⏱️ Whoa there!\n\n${data.error || 'You\'ve hit your rate limit.'}\n\nWe're free and we need to keep costs down. Thanks for understanding!`);
+
+              input.disabled = false;
+              scanButton.disabled = true;
+              return;
+            }
+
             throw new Error(data.error || 'Scan failed');
           }
 

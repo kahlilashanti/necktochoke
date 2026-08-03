@@ -19,6 +19,74 @@ const SECURITY_HEADERS = {
   'Referrer-Policy': 'strict-origin-when-cross-origin'
 };
 
+// Rate limiting configuration
+const RATE_LIMIT = {
+  maxRequests: 5,           // Maximum scans per window
+  windowMs: 60 * 60 * 1000  // 1 hour in milliseconds
+};
+
+// In-memory store for rate limiting (resets on cold starts)
+const rateLimitStore = new Map();
+
+/**
+ * Clean up old rate limit entries to prevent memory leaks
+ */
+function cleanupRateLimitStore() {
+  const now = Date.now();
+  for (const [ip, data] of rateLimitStore.entries()) {
+    // Remove entries older than the rate limit window
+    if (now - data.firstRequestTime > RATE_LIMIT.windowMs) {
+      rateLimitStore.delete(ip);
+    }
+  }
+}
+
+/**
+ * Check if IP is rate limited
+ * Returns { limited: boolean, retryAfter: number }
+ */
+function checkRateLimit(ip) {
+  // Clean up old entries periodically (every 100 requests)
+  if (Math.random() < 0.01) {
+    cleanupRateLimitStore();
+  }
+
+  const now = Date.now();
+  const clientData = rateLimitStore.get(ip);
+
+  if (!clientData) {
+    // First request from this IP
+    rateLimitStore.set(ip, {
+      count: 1,
+      firstRequestTime: now
+    });
+    return { limited: false, retryAfter: 0 };
+  }
+
+  // Check if we're still in the rate limit window
+  const timeSinceFirst = now - clientData.firstRequestTime;
+
+  if (timeSinceFirst > RATE_LIMIT.windowMs) {
+    // Window expired, reset counter
+    rateLimitStore.set(ip, {
+      count: 1,
+      firstRequestTime: now
+    });
+    return { limited: false, retryAfter: 0 };
+  }
+
+  // Still in window, check count
+  if (clientData.count >= RATE_LIMIT.maxRequests) {
+    // Rate limited
+    const retryAfter = Math.ceil((RATE_LIMIT.windowMs - timeSinceFirst) / 1000); // seconds
+    return { limited: true, retryAfter };
+  }
+
+  // Increment count
+  clientData.count++;
+  return { limited: false, retryAfter: 0 };
+}
+
 /**
  * SSRF Protection - Block requests to internal/private IP ranges
  */
@@ -339,6 +407,28 @@ exports.handler = async (event, context) => {
   }
 
   try {
+    // Get client IP for rate limiting
+    const clientIP = event.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+                     event.headers['client-ip'] ||
+                     'unknown';
+
+    // Check rate limit
+    const { limited, retryAfter } = checkRateLimit(clientIP);
+    if (limited) {
+      const minutes = Math.ceil(retryAfter / 60);
+      return {
+        statusCode: 429,
+        headers: {
+          ...SECURITY_HEADERS,
+          'Retry-After': retryAfter.toString()
+        },
+        body: JSON.stringify({
+          error: `Slow down there. You've used your ${RATE_LIMIT.maxRequests} free scans. Come back in ${minutes} minute${minutes === 1 ? '' : 's'}.`,
+          retryAfter: retryAfter
+        })
+      };
+    }
+
     // Parse request body
     const body = JSON.parse(event.body);
     const { url, type } = body;

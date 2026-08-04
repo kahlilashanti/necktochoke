@@ -381,10 +381,88 @@ function getRequestBody(req) {
 }
 
 /**
+ * Read counter from counter.json
+ */
+function readCounter() {
+  try {
+    const data = fs.readFileSync(path.join(__dirname, 'counter.json'), 'utf8');
+    const json = JSON.parse(data);
+    return json.count || 0;
+  } catch (error) {
+    console.error('Error reading counter:', error);
+    return 0;
+  }
+}
+
+/**
+ * Write counter to counter.json
+ */
+function writeCounter(count) {
+  try {
+    fs.writeFileSync(
+      path.join(__dirname, 'counter.json'),
+      JSON.stringify({ count }, null, 2),
+      'utf8'
+    );
+    return true;
+  } catch (error) {
+    console.error('Error writing counter:', error);
+    return false;
+  }
+}
+
+/**
  * Create HTTP server
  */
 const server = http.createServer(async (req, res) => {
   console.log(`${req.method} ${req.url}`);
+
+  // Handle /count GET endpoint
+  if (req.method === 'GET' && req.url === '/count') {
+    try {
+      const count = readCounter();
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        ...SECURITY_HEADERS
+      });
+      res.end(JSON.stringify({ count }));
+    } catch (error) {
+      console.error('Count error:', error);
+      res.writeHead(500, {
+        'Content-Type': 'application/json',
+        ...SECURITY_HEADERS
+      });
+      res.end(JSON.stringify({ error: 'Failed to read counter' }));
+    }
+    return;
+  }
+
+  // Handle /increment POST endpoint
+  if (req.method === 'POST' && req.url === '/increment') {
+    try {
+      const currentCount = readCounter();
+      const newCount = currentCount + 1;
+      const success = writeCounter(newCount);
+
+      if (!success) {
+        throw new Error('Failed to write counter');
+      }
+
+      res.writeHead(200, {
+        'Content-Type': 'application/json',
+        ...SECURITY_HEADERS
+      });
+      res.end(JSON.stringify({ count: newCount }));
+    } catch (error) {
+      console.error('Increment error:', error);
+      res.writeHead(500, {
+        'Content-Type': 'application/json',
+        ...SECURITY_HEADERS
+      });
+      res.end(JSON.stringify({ error: 'Failed to increment counter' }));
+    }
+    return;
+  }
 
   // Handle /scan POST endpoint
   if (req.method === 'POST' && req.url === '/scan') {

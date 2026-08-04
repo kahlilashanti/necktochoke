@@ -29,6 +29,120 @@ document.addEventListener('DOMContentLoaded', () => {
   const safetyButton = document.getElementById('safetyButton');
   const safetyNotice = document.getElementById('safetyNotice');
   const closeNotice = document.getElementById('closeNotice');
+  const counterNumber = document.getElementById('counterNumber');
+
+  /* ===================================
+     Scan Counter Functions
+     =================================== */
+
+  let currentCount = 0; // Track current count for updates
+
+  /**
+   * Fetch the current scan count from the server
+   */
+  async function fetchCount() {
+    try {
+      const response = await fetch('/count');
+      if (!response.ok) {
+        throw new Error('Failed to fetch count');
+      }
+      const data = await response.json();
+      return data.count || 0;
+    } catch (error) {
+      console.error('Error fetching count:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Increment the scan counter on the server
+   */
+  async function incrementCount() {
+    try {
+      const response = await fetch('/increment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to increment count');
+      }
+      const data = await response.json();
+      return data.count || currentCount;
+    } catch (error) {
+      console.error('Error incrementing count:', error);
+      return currentCount;
+    }
+  }
+
+  /**
+   * Animate counter from start to end value
+   * Duration: 1.5 seconds
+   * Easing: ease-out (decelerating)
+   */
+  function animateCounter(start, end, duration = 1500) {
+    if (!counterNumber) return;
+
+    const startTime = Date.now();
+    const difference = end - start;
+
+    function update() {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+
+      // Ease-out function: 1 - (1 - t)^3
+      const easedProgress = 1 - Math.pow(1 - progress, 3);
+
+      const current = Math.floor(start + (difference * easedProgress));
+      counterNumber.textContent = current.toLocaleString();
+
+      if (progress < 1) {
+        requestAnimationFrame(update);
+      } else {
+        counterNumber.textContent = end.toLocaleString();
+        currentCount = end;
+      }
+    }
+
+    requestAnimationFrame(update);
+  }
+
+  /**
+   * Initialize counter on page load
+   */
+  async function initializeCounter() {
+    const count = await fetchCount();
+    animateCounter(0, count);
+  }
+
+  /**
+   * Update counter with new value (smooth update)
+   */
+  function updateCounter(newCount) {
+    if (newCount > currentCount) {
+      animateCounter(currentCount, newCount, 800);
+    }
+  }
+
+  /**
+   * Poll for counter updates every 30 seconds
+   * This keeps the counter in sync if others are scanning
+   */
+  function startCounterPolling() {
+    setInterval(async () => {
+      const count = await fetchCount();
+      if (count > currentCount) {
+        updateCounter(count);
+      }
+    }, 30000); // Poll every 30 seconds
+  }
+
+  // Initialize counter on page load
+  initializeCounter();
+
+  // Start polling for updates
+  startCounterPolling();
 
   /* ===================================
      Hide Scroll Indicator on Interaction
@@ -282,6 +396,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             throw new Error(data.error || 'Scan failed');
           }
+
+          // Increment the counter after successful scan
+          const newCount = await incrementCount();
+          updateCounter(newCount);
 
           // Stop progress bar and hide loading
           stopProgressBar(progressInterval);

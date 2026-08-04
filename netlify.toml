@@ -11,6 +11,18 @@
   to = "/.netlify/functions/scan"
   status = 200
 
+# Redirect /count API calls to the serverless function
+[[redirects]]
+  from = "/count"
+  to = "/.netlify/functions/count"
+  status = 200
+
+# Redirect /increment API calls to the serverless function
+[[redirects]]
+  from = "/increment"
+  to = "/.netlify/functions/increment"
+  status = 200
+
 # Custom headers for security (practice what we preach!)
 [[headers]]
   for = "/*"

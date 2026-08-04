@@ -166,6 +166,11 @@ document.addEventListener('DOMContentLoaded', () => {
       const card = button.parentElement;
       const optionType = card.dataset.option;
 
+      // Don't reactivate if already active
+      if (card.classList.contains('active')) {
+        return;
+      }
+
       // Hide all other cards
       optionCards.forEach(c => {
         if (c !== card) {
@@ -295,7 +300,7 @@ document.addEventListener('DOMContentLoaded', () => {
           // Keep button disabled until they change the input
         }
       });
-    }, { once: true }); // Only attach option button handler once per button
+    });
   });
 
   /* ===================================
@@ -480,6 +485,9 @@ document.addEventListener('DOMContentLoaded', () => {
       scoreText = 'Not Great';
     } else if (summary.medium > 0) {
       scoreClass = 'warning';
+      scoreText = 'At Risk';
+    } else if (summary.low > 0) {
+      scoreClass = 'good';
       scoreText = 'Could Be Better';
     }
 

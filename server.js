@@ -218,13 +218,16 @@ async function checkSecurityHeaders(url) {
       });
     }
 
-    // Check for X-Frame-Options
-    if (!headers['x-frame-options']) {
+    // Check for X-Frame-Options (skip if CSP frame-ancestors is present)
+    const cspHeader = headers['content-security-policy'] || '';
+    const hasFrameAncestors = cspHeader.includes('frame-ancestors');
+
+    if (!headers['x-frame-options'] && !hasFrameAncestors) {
       vulnerabilities.push({
         severity: 'medium',
         title: 'Missing X-Frame-Options',
         description: 'Your site can be embedded in iframes, making it vulnerable to clickjacking attacks.',
-        recommendation: 'Add the header: X-Frame-Options: DENY or SAMEORIGIN'
+        recommendation: 'Add the header: X-Frame-Options: DENY or SAMEORIGIN, or use CSP frame-ancestors directive'
       });
     }
 
@@ -245,16 +248,6 @@ async function checkSecurityHeaders(url) {
         title: 'Missing Content Security Policy',
         description: 'No CSP header found. This makes your site more vulnerable to XSS attacks.',
         recommendation: 'Add a Content-Security-Policy header to control what resources can load.'
-      });
-    }
-
-    // Check for X-XSS-Protection
-    if (!headers['x-xss-protection']) {
-      vulnerabilities.push({
-        severity: 'low',
-        title: 'Missing X-XSS-Protection',
-        description: 'The X-XSS-Protection header is missing, though it\'s mostly deprecated in favor of CSP.',
-        recommendation: 'Add the header: X-XSS-Protection: 1; mode=block (or rely on CSP)'
       });
     }
 
@@ -291,8 +284,18 @@ async function checkExposedFiles(url) {
     try {
       const response = await makeRequest(url, file);
 
-      // If we get a 200 response, the file is exposed
-      if (response.statusCode === 200) {
+      // Only flag as exposed if:
+      // 1. Status code is 200 (not 404, 403, etc.)
+      // 2. Response has content (not empty or minimal)
+      // 3. Response doesn't look like an error page
+      const hasContent = response.body && response.body.length > 20;
+      const looksLikeErrorPage = response.body && (
+        response.body.toLowerCase().includes('not found') ||
+        response.body.toLowerCase().includes('404') ||
+        response.body.toLowerCase().includes('error')
+      );
+
+      if (response.statusCode === 200 && hasContent && !looksLikeErrorPage) {
         foundFiles.push(file);
       }
     } catch (error) {

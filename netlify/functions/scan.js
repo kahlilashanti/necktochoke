@@ -298,11 +298,18 @@ async function checkSecurityHeaders(url) {
     }
 
     // Check for Server header exposure
-    if (headers['server']) {
+    // Skip if it's a platform header that can't be removed (Netlify, Vercel, etc.)
+    const serverHeader = headers['server'];
+    const unavoidablePlatforms = ['netlify', 'vercel'];
+    const isPlatformHeader = serverHeader && unavoidablePlatforms.some(platform =>
+      serverHeader.toLowerCase().includes(platform)
+    );
+
+    if (serverHeader && !isPlatformHeader) {
       vulnerabilities.push({
         severity: 'low',
         title: 'Server Information Exposure',
-        description: `Your server is advertising itself as: ${headers['server']}. This gives attackers information about your stack.`,
+        description: `Your server is advertising itself as: ${serverHeader}. This gives attackers information about your stack.`,
         recommendation: 'Remove or obscure the Server header to avoid revealing your technology stack.'
       });
     }

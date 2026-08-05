@@ -8,7 +8,7 @@
 const { getStore } = require('@netlify/blobs');
 
 // Starting count value
-const STARTING_COUNT = 1151;
+const STARTING_COUNT = 1551;
 
 /**
  * Get the counter store from Netlify Blobs

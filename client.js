@@ -461,7 +461,8 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Really? Try a site you actually built.');
             return;
           }
-          alert(result.error || 'Please enter a valid URL');
+          // Show other validation errors as toast
+          showToast(result.error || 'Please enter a valid URL.');
           return;
         }
 
@@ -509,9 +510,28 @@ document.addEventListener('DOMContentLoaded', () => {
               stopProgressBar(progressInterval);
               loadingMessage.classList.remove('active');
 
-              // Show friendly rate limit message
+              // Show friendly rate limit toast
               const retryMinutes = data.retryAfter ? Math.ceil(data.retryAfter / 60) : 60;
-              alert(`⏱️ Whoa there!\n\n${data.error || 'You\'ve hit your rate limit.'}\n\nWe're free and we need to keep costs down. Thanks for understanding!`);
+              showToast(`Whoa there! You've hit your rate limit. Come back in ${retryMinutes} minute${retryMinutes === 1 ? '' : 's'}.`, 4000);
+
+              input.disabled = false;
+              scanButton.disabled = true;
+              return;
+            }
+
+            // Handle timeout/unreachable errors (502, 504)
+            if (response.status === 502 || response.status === 504) {
+              stopProgressBar(progressInterval);
+              loadingMessage.classList.remove('active');
+
+              // Show casual timeout message
+              const messages = [
+                "Took too long to reach that site. Is it up and running?",
+                "We ain't got all day. That site taking forever to respond.",
+                "Site's not responding. Sure that URL is right?"
+              ];
+              const randomMessage = messages[Math.floor(Math.random() * messages.length)];
+              showToast(randomMessage, 4000);
 
               input.disabled = false;
               scanButton.disabled = true;
@@ -532,9 +552,24 @@ document.addEventListener('DOMContentLoaded', () => {
           console.error('Scan error:', error);
           stopProgressBar(progressInterval);
           loadingMessage.classList.remove('active');
-          alert(`Scan failed: ${error.message}`);
-        } finally {
+
+          // Show error as toast instead of alert
+          // Different messages based on error type
+          let errorMessage = "Something went wrong. Try again?";
+
+          if (error.message.includes('timeout') || error.message.includes('Timeout')) {
+            errorMessage = "Took too long to reach that site. Is it up and running?";
+          } else if (error.message.includes('network') || error.message.includes('fetch')) {
+            errorMessage = "Can't reach that site. Check the URL?";
+          } else if (error.message.includes('Invalid URL')) {
+            errorMessage = "That URL doesn't look right.";
+          }
+
+          showToast(errorMessage, 4000);
+
           input.disabled = false;
+          scanButton.disabled = true;
+        } finally {
           // Keep button disabled until they change the input
         }
       });

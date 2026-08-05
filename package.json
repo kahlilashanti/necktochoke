@@ -6,7 +6,13 @@
   "scripts": {
     "start": "node server.js"
   },
-  "keywords": ["security", "scanner"],
+  "keywords": [
+    "security",
+    "scanner"
+  ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "@netlify/blobs": "^10.7.12"
+  }
 }

@@ -35,10 +35,13 @@ document.addEventListener('DOMContentLoaded', () => {
      Scan Counter Functions
      =================================== */
 
-  let currentCount = 0; // Track current count for updates
+  // Track current count for updates
+  let currentCount = 0;
 
   /**
    * Fetch the current scan count from the server
+   * Calls GET /count endpoint which returns count from Netlify Blobs
+   * @returns {Promise<number>} - Current count value
    */
   async function fetchCount() {
     try {
@@ -56,6 +59,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * Increment the scan counter on the server
+   * Calls POST /increment endpoint which updates Netlify Blobs
+   * @returns {Promise<number>} - New count value after increment
    */
   async function incrementCount() {
     try {
@@ -110,6 +115,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * Initialize counter on page load
+   * Fetches count from server and animates from 0 to current value
    */
   async function initializeCounter() {
     const count = await fetchCount();
@@ -118,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * Update counter with new value (smooth update)
+   * Used when user clicks scan to increment the counter
    */
   function updateCounter(newCount) {
     if (newCount > currentCount) {
@@ -141,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize counter on page load
   initializeCounter();
 
-  // Start polling for updates
+  // Start polling for updates from other users
   startCounterPolling();
 
   /* ===================================
@@ -462,6 +469,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // Increment the counter immediately when scan button is pressed
         // This provides instant social proof and counts all scan attempts
+        // Calls POST /increment endpoint which updates Netlify Blobs
         const newCount = await incrementCount();
         console.log('Counter incremented to:', newCount); // Log for verification
         updateCounter(newCount);

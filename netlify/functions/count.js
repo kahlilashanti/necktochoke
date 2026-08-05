@@ -2,31 +2,54 @@
  * Netlify Function - Get Scan Counter
  *
  * Returns the current number of scans performed
+ * Uses Netlify Blobs for persistent serverless storage
  */
 
-const fs = require('fs');
-const path = require('path');
+const { getStore } = require('@netlify/blobs');
 
-// Path to counter file
-const COUNTER_FILE = path.join(__dirname, '../../counter.json');
+// Starting count value
+const STARTING_COUNT = 1151;
 
 /**
- * Read current count from counter.json
+ * Get the counter store from Netlify Blobs
+ * @param {object} context - Netlify function context
+ * @returns {object} - Netlify Blobs store instance
  */
-function readCount() {
+function getCounterStore(context) {
+  return getStore({
+    name: 'counter',
+    siteID: context.site?.id,
+    token: context.token
+  });
+}
+
+/**
+ * Read current count from Netlify Blobs
+ * @param {object} store - Netlify Blobs store instance
+ * @returns {Promise<number>} - Current count value
+ */
+async function readCount(store) {
   try {
-    const data = fs.readFileSync(COUNTER_FILE, 'utf8');
-    const json = JSON.parse(data);
-    return json.count || 0;
+    // Get count from blob storage
+    const countStr = await store.get('scanCount');
+
+    // If no count exists yet, return starting count
+    if (!countStr) {
+      return STARTING_COUNT;
+    }
+
+    // Parse and return the count
+    const count = parseInt(countStr, 10);
+    return isNaN(count) ? STARTING_COUNT : count;
   } catch (error) {
-    console.error('Error reading counter:', error);
-    // If file doesn't exist or is corrupted, return 0
-    return 0;
+    console.error('Error reading counter from blobs:', error);
+    return STARTING_COUNT;
   }
 }
 
 /**
  * Netlify Function Handler
+ * Returns the current scan count from blob storage
  */
 exports.handler = async (event, context) => {
   // Only allow GET requests
@@ -42,7 +65,11 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    const count = readCount();
+    // Get the counter store
+    const store = getCounterStore(context);
+
+    // Read current count from blob storage
+    const count = await readCount(store);
 
     return {
       statusCode: 200,

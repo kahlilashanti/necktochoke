@@ -345,8 +345,151 @@ async function detectCatchAllRouting(url) {
 }
 
 /**
+ * Check if response body contains HTML tags
+ * Used to distinguish actual file content from catch-all HTML pages
+ */
+function containsHtmlTags(body) {
+  if (!body) return false;
+
+  // Check for common HTML tags that indicate this is an HTML page, not a raw file
+  const htmlPatterns = [
+    /<html/i,
+    /<head/i,
+    /<body/i,
+    /<div/i,
+    /<script/i,
+    /<!DOCTYPE/i,
+    /<meta/i
+  ];
+
+  return htmlPatterns.some(pattern => pattern.test(body));
+}
+
+/**
+ * Validate if a file response contains legitimate file content (not a catch-all HTML page)
+ * Returns true only if we can confirm the file is genuinely exposed
+ * When in doubt, returns false to avoid false positives
+ */
+function isLegitimateFileExposure(filePath, response) {
+  const { statusCode, headers, body } = response;
+
+  // Must be HTTP 200
+  if (statusCode !== 200) {
+    return false;
+  }
+
+  // Must have meaningful content
+  if (!body || body.length < 20) {
+    return false;
+  }
+
+  // Get content type from headers
+  const contentType = headers['content-type'] || '';
+
+  // If Content-Type is NOT text/html, it's likely a real file
+  // (e.g., application/octet-stream, text/plain, application/json, etc.)
+  const isHtmlContentType = contentType.toLowerCase().includes('text/html');
+
+  // Check if body contains HTML tags (indicates catch-all HTML page)
+  const hasHtmlTags = containsHtmlTags(body);
+
+  // File-specific validation rules
+  // When in doubt, we skip flagging to avoid false positives
+
+  if (filePath === '/phpinfo.php') {
+    // phpinfo.php: only flag if body contains "PHP Version" string
+    // This is a distinctive marker that appears in actual phpinfo() output
+    return body.includes('PHP Version');
+  }
+
+  if (filePath === '/.env') {
+    // .env files: should contain key=value pairs and NO HTML tags
+    // Check for equals signs (environment variable syntax) and absence of HTML
+    const hasKeyValuePairs = body.includes('=');
+    return hasKeyValuePairs && !hasHtmlTags;
+  }
+
+  if (filePath === '/.git/config') {
+    // .git/config: should contain git config syntax like [core] or [remote]
+    // No HTML tags should be present
+    const hasGitConfigSyntax = /\[(core|remote|branch|user)\]/i.test(body);
+    return hasGitConfigSyntax && !hasHtmlTags;
+  }
+
+  if (filePath === '/.aws/credentials') {
+    // .aws/credentials: should contain [default] or [profile] sections
+    // aws_access_key_id and aws_secret_access_key entries
+    const hasAwsCredentialsSyntax = body.includes('aws_access_key_id') ||
+                                    body.includes('aws_secret_access_key') ||
+                                    /\[default\]|\[profile\s/i.test(body);
+    return hasAwsCredentialsSyntax && !hasHtmlTags;
+  }
+
+  if (filePath.endsWith('.json')) {
+    // JSON files (config.json, credentials.json, secrets.json, package.json, etc.)
+    // Must be valid-looking JSON and not HTML
+    // Check for JSON structure markers: curly braces, quotes, colons
+    const looksLikeJson = body.trim().startsWith('{') &&
+                         body.trim().endsWith('}') &&
+                         body.includes(':') &&
+                         !hasHtmlTags;
+    return looksLikeJson;
+  }
+
+  if (filePath.endsWith('.yml') || filePath.endsWith('.yaml')) {
+    // YAML files (config.yml, database.yml, etc.)
+    // Should contain key: value pairs and no HTML
+    // YAML uses colons and indentation, no angle brackets
+    const looksLikeYaml = body.includes(':') && !hasHtmlTags;
+    return looksLikeYaml;
+  }
+
+  if (filePath === '/.npmrc' || filePath === '/.htpasswd') {
+    // Configuration files with key=value or key:value format
+    // No HTML tags
+    const hasConfigSyntax = (body.includes('=') || body.includes(':')) && !hasHtmlTags;
+    return hasConfigSyntax;
+  }
+
+  if (filePath === '/web.config') {
+    // web.config: should contain XML configuration, not HTML page
+    // Look for <?xml or <configuration> tags specific to web.config
+    const hasWebConfigSyntax = body.includes('<?xml') ||
+                               body.includes('<configuration>') ||
+                               body.includes('<system.web>');
+    return hasWebConfigSyntax && !body.includes('<html');
+  }
+
+  if (filePath.endsWith('.sql')) {
+    // SQL dump files (backup.sql, dump.sql)
+    // Should contain SQL syntax like CREATE, INSERT, SELECT, etc.
+    // No HTML tags
+    const hasSqlSyntax = /\b(CREATE|INSERT|SELECT|DROP|ALTER|TABLE|DATABASE)\b/i.test(body);
+    return hasSqlSyntax && !hasHtmlTags;
+  }
+
+  if (filePath === '/.ssh/id_rsa' || filePath.endsWith('id_rsa')) {
+    // SSH private key files
+    // Should contain "BEGIN RSA PRIVATE KEY" or similar header
+    const hasPrivateKeyHeader = body.includes('BEGIN') &&
+                               body.includes('PRIVATE KEY');
+    return hasPrivateKeyHeader && !hasHtmlTags;
+  }
+
+  // Default rule for all other files:
+  // Only flag if Content-Type is NOT text/html AND body doesn't contain HTML tags
+  // This ensures we only flag files that are genuinely exposed, not catch-all HTML responses
+  if (!isHtmlContentType && !hasHtmlTags) {
+    return true;
+  }
+
+  // When in doubt, don't flag it (avoid false positives)
+  return false;
+}
+
+/**
  * Check for exposed sensitive files
- * Skips checks if the site uses catch-all routing to avoid false positives
+ * Uses strict validation to avoid false positives from catch-all routing
  */
 async function checkExposedFiles(url) {
   const vulnerabilities = [];
@@ -371,22 +514,14 @@ async function checkExposedFiles(url) {
     try {
       const response = await makeRequest(url, file);
 
-      // Only flag as exposed if:
-      // 1. Status code is 200 (not 404, 403, etc.)
-      // 2. Response has content (not empty or minimal)
-      // 3. Response doesn't look like an error page
-      const hasContent = response.body && response.body.length > 20;
-      const looksLikeErrorPage = response.body && (
-        response.body.toLowerCase().includes('not found') ||
-        response.body.toLowerCase().includes('404') ||
-        response.body.toLowerCase().includes('error')
-      );
-
-      if (response.statusCode === 200 && hasContent && !looksLikeErrorPage) {
+      // Use strict validation to determine if file is genuinely exposed
+      // Only flag files we can confirm are real, not catch-all HTML responses
+      if (isLegitimateFileExposure(file, response)) {
         foundFiles.push(file);
       }
     } catch (error) {
       // Expected - file not found or connection error
+      // Don't flag as error, just skip
     }
   }
 

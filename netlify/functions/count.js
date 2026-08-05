@@ -50,6 +50,7 @@ async function readCount(store) {
 /**
  * Netlify Function Handler
  * Returns the current scan count from blob storage
+ * Includes fallback for local development (returns starting count)
  */
 exports.handler = async (event, context) => {
   // Only allow GET requests
@@ -65,10 +66,26 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Get the counter store
-    const store = getCounterStore(context);
+    // Check if running locally (context.site will be undefined)
+    const isLocal = !context.site || !context.site.id;
 
-    // Read current count from blob storage
+    if (isLocal) {
+      // Local development: return starting count
+      // Netlify Blobs don't work locally, so we just return a static value
+      console.log('[LOCAL] Returning starting count:', STARTING_COUNT);
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+          'Cache-Control': 'no-cache'
+        },
+        body: JSON.stringify({ count: STARTING_COUNT })
+      };
+    }
+
+    // Production: use Netlify Blobs
+    const store = getCounterStore(context);
     const count = await readCount(store);
 
     return {

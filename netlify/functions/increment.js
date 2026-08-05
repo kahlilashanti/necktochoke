@@ -10,6 +10,10 @@ const { getStore } = require('@netlify/blobs');
 // Starting count value
 const STARTING_COUNT = 1551;
 
+// In-memory counter for local development (resets on restart)
+// Only used when Netlify Blobs aren't available (local dev)
+let localCounter = STARTING_COUNT;
+
 /**
  * Get the counter store from Netlify Blobs
  * @param {object} context - Netlify function context
@@ -67,6 +71,7 @@ async function writeCount(store, count) {
 /**
  * Netlify Function Handler
  * Increments the scan counter and returns new count
+ * Includes fallback for local development (in-memory counter)
  */
 exports.handler = async (event, context) => {
   // Only allow POST requests
@@ -82,16 +87,29 @@ exports.handler = async (event, context) => {
   }
 
   try {
-    // Get the counter store
+    // Check if running locally (context.site will be undefined)
+    const isLocal = !context.site || !context.site.id;
+
+    if (isLocal) {
+      // Local development: use in-memory counter
+      // Netlify Blobs don't work locally, so we use a simple variable
+      localCounter++;
+      console.log('[LOCAL] Counter incremented to:', localCounter);
+      return {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*'
+        },
+        body: JSON.stringify({ count: localCounter })
+      };
+    }
+
+    // Production: use Netlify Blobs
     const store = getCounterStore(context);
-
-    // Read current count
     const currentCount = await readCount(store);
-
-    // Increment by 1
     const newCount = currentCount + 1;
 
-    // Write new count back to storage
     const success = await writeCount(store, newCount);
 
     if (!success) {

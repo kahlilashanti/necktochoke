@@ -527,7 +527,7 @@ document.addEventListener('DOMContentLoaded', () => {
               // Show casual timeout message
               const messages = [
                 "Took too long to reach that site. Is it up and running?",
-                "We ain't got all day. That site taking forever to respond.",
+                "Whoa. That site is taking forever to respond.",
                 "Site's not responding. Sure that URL is right?"
               ];
               const randomMessage = messages[Math.floor(Math.random() * messages.length)];

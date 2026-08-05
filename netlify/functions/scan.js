@@ -298,9 +298,9 @@ async function checkSecurityHeaders(url) {
     }
 
     // Check for Server header exposure
-    // Skip if it's a platform header that can't be removed (Netlify, Vercel, etc.)
+    // Skip if it's a platform header that can't be removed (Netlify, Vercel, Cloudflare, etc.)
     const serverHeader = headers['server'];
-    const unavoidablePlatforms = ['netlify', 'vercel'];
+    const unavoidablePlatforms = ['netlify', 'vercel', 'cloudflare'];
     const isPlatformHeader = serverHeader && unavoidablePlatforms.some(platform =>
       serverHeader.toLowerCase().includes(platform)
     );
@@ -327,10 +327,44 @@ async function checkSecurityHeaders(url) {
 }
 
 /**
+ * Detect if the site uses catch-all routing (returns 200 for non-existent paths)
+ * This prevents false positives in file exposure checks
+ */
+async function detectCatchAllRouting(url) {
+  try {
+    // Test with a random path that should never exist
+    const randomPath = '/nonexistent-random-path-' + Math.random().toString(36).substring(7);
+    const response = await makeRequest(url, randomPath);
+
+    // If the site returns 200 for a non-existent path, it's using catch-all routing
+    return response.statusCode === 200;
+  } catch (error) {
+    // If request fails, assume no catch-all routing
+    return false;
+  }
+}
+
+/**
  * Check for exposed sensitive files
+ * Skips checks if the site uses catch-all routing to avoid false positives
  */
 async function checkExposedFiles(url) {
   const vulnerabilities = [];
+
+  // First, detect if the site uses catch-all routing
+  const hasCatchAllRouting = await detectCatchAllRouting(url);
+
+  if (hasCatchAllRouting) {
+    // Site uses catch-all routing - skip file exposure checks to avoid false positives
+    vulnerabilities.push({
+      severity: 'info',
+      title: 'File Exposure Checks Skipped',
+      description: 'This site uses catch-all routing — file exposure checks skipped to avoid false positives.',
+      recommendation: 'Your site returns HTTP 200 for all paths. File exposure checks cannot be performed reliably on sites with this routing pattern.'
+    });
+    return vulnerabilities;
+  }
+
   const foundFiles = [];
 
   for (const file of EXPOSED_FILES) {

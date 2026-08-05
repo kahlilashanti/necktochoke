@@ -218,6 +218,93 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   /* ===================================
+     Toast Notification
+     =================================== */
+
+  /**
+   * Show a toast notification at the bottom center of the screen
+   * @param {string} message - The message to display
+   * @param {number} duration - How long to show the toast in milliseconds (default: 3000)
+   */
+  function showToast(message, duration = 3000) {
+    // Create toast element
+    const toast = document.createElement('div');
+    toast.className = 'toast-notification';
+    toast.textContent = message;
+
+    // Apply styles directly (plain JS, no libraries)
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.left = '50%';
+    toast.style.transform = 'translateX(-50%)';
+    toast.style.backgroundColor = '#1a1a1a';
+    toast.style.color = '#ffffff';
+    toast.style.padding = '16px 24px';
+    toast.style.borderRadius = '8px';
+    toast.style.fontSize = '16px';
+    toast.style.fontWeight = '600';
+    toast.style.zIndex = '10000';
+    toast.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.5)';
+    toast.style.maxWidth = '90%';
+    toast.style.textAlign = 'center';
+    toast.style.opacity = '0';
+    toast.style.transition = 'opacity 0.3s ease';
+
+    // Add to document
+    document.body.appendChild(toast);
+
+    // Fade in
+    setTimeout(() => {
+      toast.style.opacity = '1';
+    }, 10);
+
+    // Fade out and remove after duration
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => {
+        document.body.removeChild(toast);
+      }, 300);
+    }, duration);
+  }
+
+  /* ===================================
+     Major Domains Detection
+     =================================== */
+
+  // Alexa top-50 and other major domains that users shouldn't scan
+  const MAJOR_DOMAINS = [
+    'google.com', 'youtube.com', 'facebook.com', 'twitter.com', 'instagram.com',
+    'tiktok.com', 'amazon.com', 'apple.com', 'microsoft.com', 'linkedin.com',
+    'netflix.com', 'reddit.com', 'yahoo.com', 'baidu.com', 'wikipedia.org',
+    'zoom.us', 'whatsapp.com', 'bing.com', 'pinterest.com', 'ebay.com',
+    'twitch.tv', 'spotify.com', 'adobe.com', 'salesforce.com', 'github.com',
+    'stackoverflow.com', 'wordpress.com', 'bbc.com', 'cnn.com', 'nytimes.com',
+    'walmart.com', 'target.com', 'etsy.com', 'paypal.com', 'dropbox.com',
+    'imdb.com', 'craigslist.org', 'airbnb.com', 'uber.com', 'lyft.com',
+    'discord.com', 'slack.com', 'telegram.org', 'medium.com', 'tumblr.com',
+    'quora.com', 'yelp.com', 'tripadvisor.com', 'alibaba.com', 'booking.com'
+  ];
+
+  /**
+   * Check if a URL is a major domain that shouldn't be scanned
+   * @param {string} url - The URL to check
+   * @returns {boolean} - True if it's a major domain
+   */
+  function isMajorDomain(url) {
+    try {
+      const parsedUrl = new URL(url);
+      const hostname = parsedUrl.hostname.toLowerCase();
+
+      // Check if hostname matches any major domain or is a subdomain of one
+      return MAJOR_DOMAINS.some(domain => {
+        return hostname === domain || hostname.endsWith('.' + domain);
+      });
+    } catch (error) {
+      return false;
+    }
+  }
+
+  /* ===================================
      Porn Keywords Detection
      =================================== */
 
@@ -265,6 +352,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Validate URL format
     try {
       new URL(url);
+
+      // Check for major domains (Google, Facebook, etc.)
+      // This check happens after URL validation so we can properly parse the domain
+      if (isMajorDomain(url)) {
+        return { valid: false, error: 'major-domain', url: url };
+      }
+
       return { valid: true, url: url, error: '' };
     } catch (error) {
       return { valid: false, error: 'That doesn\'t look like a valid URL.' };
@@ -322,12 +416,23 @@ document.addEventListener('DOMContentLoaded', () => {
           }
         } else {
           // Invalid URL - disable button, show error
-          scanButton.disabled = true;
-          if (result.error) {
-            urlError.textContent = result.error;
-            urlError.classList.add('active');
-          } else {
+          // For major domains, we still enable the button so they can click it and see the toast
+          if (result.error === 'major-domain') {
+            scanButton.disabled = false;
+            urlError.textContent = '';
             urlError.classList.remove('active');
+            // Auto-update the input with https:// if we added it
+            if (result.url !== input.value.trim()) {
+              input.value = result.url;
+            }
+          } else {
+            scanButton.disabled = true;
+            if (result.error) {
+              urlError.textContent = result.error;
+              urlError.classList.add('active');
+            } else {
+              urlError.classList.remove('active');
+            }
           }
         }
       });
@@ -344,11 +449,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = validateAndFixUrl(input.value);
 
         if (!result.valid) {
+          // Check if it's a major domain - show toast instead of alert
+          if (result.error === 'major-domain') {
+            showToast('Really? Try a site you actually built.');
+            return;
+          }
           alert(result.error || 'Please enter a valid URL');
           return;
         }
 
         const url = result.url;
+
+        // Increment the counter immediately when scan button is pressed
+        // This provides instant social proof and counts all scan attempts
+        const newCount = await incrementCount();
+        console.log('Counter incremented to:', newCount); // Log for verification
+        updateCounter(newCount);
 
         // Show loading message
         loadingMessage.classList.add('active');
@@ -396,10 +512,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
             throw new Error(data.error || 'Scan failed');
           }
-
-          // Increment the counter after successful scan
-          const newCount = await incrementCount();
-          updateCounter(newCount);
 
           // Stop progress bar and hide loading
           stopProgressBar(progressInterval);

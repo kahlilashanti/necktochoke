@@ -12,6 +12,17 @@ const path = require('path');
 // Detect if we're running in Netlify
 const isNetlify = process.env.NETLIFY === 'true';
 
+// Import Netlify Blobs only when needed
+let getStore;
+if (isNetlify) {
+  try {
+    const blobs = require('@netlify/blobs');
+    getStore = blobs.getStore;
+  } catch (error) {
+    console.error('Failed to import @netlify/blobs:', error);
+  }
+}
+
 // Local file path for counter
 const COUNTER_FILE = path.join(__dirname, 'counter.json');
 
@@ -26,7 +37,9 @@ async function getCount() {
   if (isNetlify) {
     // Netlify: Use Blobs
     try {
-      const { getStore } = await import('@netlify/blobs');
+      if (!getStore) {
+        throw new Error('Netlify Blobs not available');
+      }
       const store = getStore('counters');
       const count = await store.get('scan-count');
       return count ? parseInt(count, 10) : STARTING_COUNT;
@@ -61,7 +74,9 @@ async function incrementCount() {
   if (isNetlify) {
     // Netlify: Use Blobs
     try {
-      const { getStore } = await import('@netlify/blobs');
+      if (!getStore) {
+        throw new Error('Netlify Blobs not available');
+      }
       const store = getStore('counters');
       await store.set('scan-count', newCount.toString());
       return newCount;

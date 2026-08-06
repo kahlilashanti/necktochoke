@@ -40,44 +40,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   /**
    * Fetch the current scan count from the server
-   * Calls GET /count endpoint which returns count from Netlify Blobs
    * @returns {Promise<number>} - Current count value
    */
   async function fetchCount() {
     try {
-      const response = await fetch('/count');
+      const response = await fetch('/counter');
       if (!response.ok) {
         throw new Error('Failed to fetch count');
       }
       const data = await response.json();
-      return data.count || 0;
+      return data.count || 1629;
     } catch (error) {
       console.error('Error fetching count:', error);
-      return 0;
-    }
-  }
-
-  /**
-   * Increment the scan counter on the server
-   * Calls POST /increment endpoint which updates Netlify Blobs
-   * @returns {Promise<number>} - New count value after increment
-   */
-  async function incrementCount() {
-    try {
-      const response = await fetch('/increment', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      if (!response.ok) {
-        throw new Error('Failed to increment count');
-      }
-      const data = await response.json();
-      return data.count || currentCount;
-    } catch (error) {
-      console.error('Error incrementing count:', error);
-      return currentCount;
+      return 1629;
     }
   }
 
@@ -289,7 +264,8 @@ document.addEventListener('DOMContentLoaded', () => {
     'walmart.com', 'target.com', 'etsy.com', 'paypal.com', 'dropbox.com',
     'imdb.com', 'craigslist.org', 'airbnb.com', 'uber.com', 'lyft.com',
     'discord.com', 'slack.com', 'telegram.org', 'medium.com', 'tumblr.com',
-    'quora.com', 'yelp.com', 'tripadvisor.com', 'alibaba.com', 'booking.com'
+    'quora.com', 'yelp.com', 'tripadvisor.com', 'alibaba.com', 'booking.com',
+    'necktochoke.com'
   ];
 
   /**
@@ -468,13 +444,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const url = result.url;
 
-        // Increment the counter immediately when scan button is pressed
-        // This provides instant social proof and counts all scan attempts
-        // Calls POST /increment endpoint which updates Netlify Blobs
-        const newCount = await incrementCount();
-        console.log('Counter incremented to:', newCount); // Log for verification
-        updateCounter(newCount);
-
         // Show loading message
         loadingMessage.classList.add('active');
         resultsSection.classList.remove('active');
@@ -545,6 +514,12 @@ document.addEventListener('DOMContentLoaded', () => {
           stopProgressBar(progressInterval);
           setTimeout(() => {
             loadingMessage.classList.remove('active');
+
+            // Update counter with new count from server
+            if (data.newCount) {
+              updateCounter(data.newCount);
+            }
+
             displayResults(data);
           }, 500); // Brief pause to show 100% complete
 

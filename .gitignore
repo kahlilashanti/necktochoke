@@ -5,6 +5,7 @@ node_modules/
 .netlify/
 *.log
 .cache
+counter.json
 
 # Internal docs (keep private)
 DISTRIBUTION.md

@@ -11,7 +11,6 @@ const fs = require('fs');
 const path = require('path');
 const { URL } = require('url');
 const dns = require('dns').promises;
-const { getCount, incrementCount } = require('./counter-storage');
 
 const PORT = 8080;
 
@@ -388,26 +387,6 @@ function getRequestBody(req) {
 const server = http.createServer(async (req, res) => {
   console.log(`${req.method} ${req.url}`);
 
-  // Handle /counter GET endpoint
-  if (req.method === 'GET' && req.url === '/counter') {
-    try {
-      const count = await getCount();
-      res.writeHead(200, {
-        'Content-Type': 'application/json',
-        ...SECURITY_HEADERS
-      });
-      res.end(JSON.stringify({ count }));
-    } catch (error) {
-      console.error('Counter error:', error);
-      res.writeHead(500, {
-        'Content-Type': 'application/json',
-        ...SECURITY_HEADERS
-      });
-      res.end(JSON.stringify({ error: 'Failed to read counter' }));
-    }
-    return;
-  }
-
   // Handle /scan POST endpoint
   if (req.method === 'POST' && req.url === '/scan') {
     try {
@@ -438,12 +417,6 @@ const server = http.createServer(async (req, res) => {
 
       // Run the scan
       const results = await scanUrl(validatedUrl);
-
-      // Increment counter after successful scan
-      const newCount = await incrementCount();
-
-      // Add new count to results
-      results.newCount = newCount;
 
       res.writeHead(200, {
         'Content-Type': 'application/json',

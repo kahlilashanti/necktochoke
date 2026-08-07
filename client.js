@@ -29,102 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const safetyButton = document.getElementById('safetyButton');
   const safetyNotice = document.getElementById('safetyNotice');
   const closeNotice = document.getElementById('closeNotice');
-  const counterNumber = document.getElementById('counterNumber');
-
-  /* ===================================
-     Scan Counter Functions
-     =================================== */
-
-  // Track current count for updates
-  let currentCount = 0;
-
-  /**
-   * Fetch the current scan count from the server
-   * @returns {Promise<number>} - Current count value
-   */
-  async function fetchCount() {
-    try {
-      const response = await fetch('/counter');
-      if (!response.ok) {
-        throw new Error('Failed to fetch count');
-      }
-      const data = await response.json();
-      return data.count || 1629;
-    } catch (error) {
-      console.error('Error fetching count:', error);
-      return 1629;
-    }
-  }
-
-  /**
-   * Animate counter from start to end value
-   * Duration: 1.5 seconds
-   * Easing: ease-out (decelerating)
-   */
-  function animateCounter(start, end, duration = 1500) {
-    if (!counterNumber) return;
-
-    const startTime = Date.now();
-    const difference = end - start;
-
-    function update() {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-
-      // Ease-out function: 1 - (1 - t)^3
-      const easedProgress = 1 - Math.pow(1 - progress, 3);
-
-      const current = Math.floor(start + (difference * easedProgress));
-      counterNumber.textContent = current.toLocaleString();
-
-      if (progress < 1) {
-        requestAnimationFrame(update);
-      } else {
-        counterNumber.textContent = end.toLocaleString();
-        currentCount = end;
-      }
-    }
-
-    requestAnimationFrame(update);
-  }
-
-  /**
-   * Initialize counter on page load
-   * Fetches count from server and animates from 0 to current value
-   */
-  async function initializeCounter() {
-    const count = await fetchCount();
-    animateCounter(0, count);
-  }
-
-  /**
-   * Update counter with new value (smooth update)
-   * Used when user clicks scan to increment the counter
-   */
-  function updateCounter(newCount) {
-    if (newCount > currentCount) {
-      animateCounter(currentCount, newCount, 800);
-    }
-  }
-
-  /**
-   * Poll for counter updates every 30 seconds
-   * This keeps the counter in sync if others are scanning
-   */
-  function startCounterPolling() {
-    setInterval(async () => {
-      const count = await fetchCount();
-      if (count > currentCount) {
-        updateCounter(count);
-      }
-    }, 30000); // Poll every 30 seconds
-  }
-
-  // Initialize counter on page load
-  initializeCounter();
-
-  // Start polling for updates from other users
-  startCounterPolling();
 
   /* ===================================
      Hide Scroll Indicator on Interaction
@@ -384,6 +288,12 @@ document.addEventListener('DOMContentLoaded', () => {
       // Focus on input field
       setTimeout(() => input.focus(), 100);
 
+      // Only add event listeners if not already added (prevent duplicates)
+      if (card.dataset.listenersAdded === 'true') {
+        return;
+      }
+      card.dataset.listenersAdded = 'true';
+
       // Input validation for this card
       input.addEventListener('input', () => {
         const result = validateAndFixUrl(input.value);
@@ -514,12 +424,6 @@ document.addEventListener('DOMContentLoaded', () => {
           stopProgressBar(progressInterval);
           setTimeout(() => {
             loadingMessage.classList.remove('active');
-
-            // Update counter with new count from server
-            if (data.newCount) {
-              updateCounter(data.newCount);
-            }
-
             displayResults(data);
           }, 500); // Brief pause to show 100% complete
 
@@ -826,7 +730,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const scanButton = card.querySelector('.scan-button');
             const urlError = card.querySelector('.url-error');
 
-            if (input) input.value = '';
+            if (input) {
+              input.value = '';
+              input.disabled = false;
+            }
             if (scanButton) scanButton.disabled = true;
             if (urlError) {
               urlError.textContent = '';

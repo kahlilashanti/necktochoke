@@ -8,7 +8,6 @@ const http = require('http');
 const https = require('https');
 const { URL } = require('url');
 const dns = require('dns').promises;
-const { incrementCount } = require('../../counter-storage');
 
 // Security headers for all responses
 const SECURITY_HEADERS = {
@@ -654,17 +653,10 @@ exports.handler = async (event, context) => {
     // Run the scan
     const results = await scanUrl(validatedUrl);
 
-    // Increment counter after successful scan
-    const newCount = await incrementCount();
-
-    // Add new count to results
-    results.newCount = newCount;
-
     const duration = Date.now() - startTime;
     console.log('[ANALYTICS] Scan completed:', {
       url: validatedUrl,
       duration: duration + 'ms',
-      newCount: newCount,
       vulnerabilities: {
         total: results.summary.total,
         critical: results.summary.critical,

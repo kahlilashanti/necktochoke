@@ -113,34 +113,6 @@ body {
 }
 
 /* ===================================
-   Scan Counter
-   =================================== */
-
-.scan-counter {
-  text-align: center;
-  margin: 4rem auto 2rem auto;
-  padding: 2rem 1rem;
-}
-
-.counter-number {
-  font-size: 6rem;
-  font-weight: 900;
-  color: #ffffff;
-  letter-spacing: -0.02em;
-  line-height: 1;
-  margin-bottom: 0.5rem;
-  font-variant-numeric: tabular-nums;
-}
-
-.counter-label {
-  font-size: 1.2rem;
-  font-weight: 400;
-  color: #888;
-  text-transform: lowercase;
-  letter-spacing: 0.1em;
-}
-
-/* ===================================
    Safety Button & Notice
    =================================== */
 
@@ -738,19 +710,6 @@ body {
     font-size: 2.5rem;
   }
 
-  .scan-counter {
-    margin: 3rem auto 1.5rem auto;
-    padding: 1.5rem 1rem;
-  }
-
-  .counter-number {
-    font-size: 4.5rem;
-  }
-
-  .counter-label {
-    font-size: 1.1rem;
-  }
-
   .safety-button {
     top: 1rem;
     right: 1rem;
@@ -871,19 +830,6 @@ body {
 
   .scroll-indicator span {
     font-size: 2rem;
-  }
-
-  .scan-counter {
-    margin: 2.5rem auto 1.2rem auto;
-    padding: 1.2rem 0.5rem;
-  }
-
-  .counter-number {
-    font-size: 3.5rem;
-  }
-
-  .counter-label {
-    font-size: 1rem;
   }
 
   .safety-button {

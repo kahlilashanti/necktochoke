@@ -11,12 +11,6 @@
   to = "/.netlify/functions/scan"
   status = 200
 
-# Redirect /counter API calls to the serverless function
-[[redirects]]
-  from = "/counter"
-  to = "/.netlify/functions/counter"
-  status = 200
-
 # Custom headers for security (practice what we preach!)
 [[headers]]
   for = "/*"
